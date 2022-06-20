@@ -1,0 +1,146 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1145.v7f2433caa07f">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_DISTRO</name>
+          <randomName>choice-parameter-2622025382624094</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def repo = &quot;aptly repo list --raw&quot;.execute() | &quot;grep stable&quot;.execute() |  &quot;grep -v unstable&quot;.execute()
+println repo.text
+&apos;&apos;&apos;.trim()
+
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>WIP_download_package</projectName>
+          <projectFullName>WIP_download_package</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <org.biouno.unochoice.CascadeChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_PACKAGES</name>
+          <randomName>choice-parameter-2622025384865493</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def repository = new StringBuilder().append(SOURCE_DISTRO).append(&apos;_main&apos;)
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot;
+println &quot;aptly repo search -format=&apos;{{.Package}}={{.Version}} ${repository}&quot;.execute().text
+&quot;&quot;&quot;.trim()
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;&apos;&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>WIP_download_package</projectName>
+          <projectFullName>WIP_download_package</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>SOURCE_DISTRO</referencedParameters>
+          <choiceType>PT_CHECKBOX</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.CascadeChoiceParameter>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2659.v52d3de6044d0">
+    <script>POD_TEMPLATE=&apos;&apos;&apos;
+apiVersion: v1
+kind: Pod
+spec:
+  securityContext:
+    runAsUser: 0
+  containers:
+  - name: debian-cont
+    image: debian:latest
+    
+    command:
+    - sleep
+    args:
+    - infinity
+&apos;&apos;&apos;
+
+podTemplate(yaml:POD_TEMPLATE){
+    node(POD_LABEL){
+        stage(&apos;Git Clone&apos;){
+            git branch: &apos;main&apos;, credentialsId: &apos;gitlab-user-id&apos;, url: &apos;http://gitlab.tmaxos.net/infra/tmax-b2b-ci.git&apos;
+        }
+        stage(&apos;Download Packages&apos;){
+            sh &quot;cp gpg/*.gpg /etc/apt/trusted.gpg.d/&quot;
+            dir(&apos;scripts&apos;){
+                sh &quot;./download_package.sh ${params.SOURCE_DISTRO} ${params.SOURCE_PACKAGES}&quot;
+            }
+        }
+        stage(&apos;Archive Artifacts&apos;){
+            archiveArtifacts artifacts: &apos;scripts/**/*.deb&apos;, followSymlinks: false
+        }
+        
+    }
+
+}
+
+</script>
+    <sandbox>false</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

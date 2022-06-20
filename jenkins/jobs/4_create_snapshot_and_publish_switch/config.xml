@@ -1,0 +1,137 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>snapshot을 찍은 후 publish&#xd;
+- publish : 사용자들이 받을 수 있도록 배포하는 단계</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>DISTRIBUTION_NAME</name>
+          <randomName>choice-parameter-3006574429036717</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def repo = &quot;aptly publish list --raw&quot;.execute() | [&apos;awk&apos;, &apos;{ print $2 }&apos;].execute()
+println repo.text
+&apos;&apos;&apos;.trim()
+
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>4_create_snapshot_and_publish_switch</projectName>
+          <projectFullName>4_create_snapshot_and_publish_switch</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>false</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <hudson.model.StringParameterDefinition>
+          <name>PREFIX_NAME</name>
+          <description>distribution이 위치할 경로 (ex. tmax)
+-&gt; tmax로 설정할 경우 http://tos-repo.tmaxos.com/tmax에 위치
+-&gt; debian으로 설정할 경우 http://tos-repo.tmaxos.com/debian에 위치</description>
+          <defaultValue>tmax</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+set -x
+
+SNAPSHOT_NAME=&quot;$(date --iso-8601=seconds)-${DISTRIBUTION_NAME}&quot;
+
+DISTRIBUTION=${DISTRIBUTION_NAME}
+PREFIX=${PREFIX_NAME}
+GPGID=&quot;TmaxOS Stable Release Key (21/gorani)&quot;
+GPGPASSWD=&quot;&quot;
+CONFIG=&quot;/etc/aptly.conf&quot;
+
+if [ &quot;${DISTRIBUTION}&quot; == &quot;&quot; ] || [ &quot;${PREFIX}&quot; == &quot;&quot; ] || [ &quot;${GPGID}&quot; == &quot;&quot; ] || [ &quot;${CONFIG}&quot; == &quot;&quot; ]; then
+  echo -e &quot;Please put arguments. ( ./snapshot_create_and_publish_switch.sh {DISTRIBUTION} {PREFIX} {GPGID} {GPGPASSWD} {CONFIG})&quot;
+  exit 1
+fi
+
+aptly snapshot create -config=${CONFIG} \
+${SNAPSHOT_NAME}_${DISTRIBUTION}_main \
+from repo ${DISTRIBUTION}_main
+
+aptly publish switch -config=${CONFIG} -skip-cleanup -skip-contents \
+-batch -gpg-key=&quot;${GPGID}&quot; \
+-force-overwrite \
+-component=main \
+${DISTRIBUTION} \
+${PREFIX} \
+${SNAPSHOT_NAME}_${DISTRIBUTION}_main</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DISTRIBUTION=${DISTRIBUTION_NAME}</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>5_copy_to_public_repo</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>

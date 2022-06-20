@@ -1,0 +1,176 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>1</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_DISTRO</name>
+          <description>패키지를 export할 DISTRIBUTION</description>
+          <randomName>choice-parameter-2831333621305499</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def repo = &quot;aptly repo list --raw&quot;.execute() | &quot;grep stable&quot;.execute() |  &quot;grep -v unstable&quot;.execute()
+println repo.text
+&apos;&apos;&apos;.trim()
+
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>10_download_packages</projectName>
+          <projectFullName>10_download_packages</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <org.biouno.unochoice.CascadeChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_PACKAGES</name>
+          <randomName>choice-parameter-2831361758025531</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def repository = new StringBuilder().append(SOURCE_DISTRO).append(&apos;_main&apos;)
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot;
+println &quot;aptly repo search -format=&apos;{{.Package}}={{.Version}} ${repository}&quot;.execute().text
+&quot;&quot;&quot;.trim()
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;&apos;&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>10_download_packages</projectName>
+          <projectFullName>10_download_packages</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>SOURCE_DISTRO</referencedParameters>
+          <choiceType>PT_CHECKBOX</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.CascadeChoiceParameter>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition plugin="nodelabelparameter@1.10.3">
+          <name>NODE</name>
+          <description>빌드 완료 후 작업공간에서 최신 작업에 대한 패키지 다운로드 가능</description>
+          <allowedSlaves>
+            <string>slave1</string>
+            <string>slave2</string>
+          </allowedSlaves>
+          <defaultSlaves>
+            <string>slave1</string>
+            <string>slave2</string>
+          </defaultSlaves>
+          <triggerIfResult>multiSelectionDisallowed</triggerIfResult>
+          <allowMultiNodeSelection>false</allowMultiNodeSelection>
+          <triggerConcurrentBuilds>false</triggerConcurrentBuilds>
+          <ignoreOfflineNodes>false</ignoreOfflineNodes>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.AllNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+set -e
+#set -x
+
+COMPONENT=&quot;main&quot;
+
+cat &gt;/etc/apt/sources.list.d/temp.list&lt;&lt;EOF
+deb http://b2b-repo.tmaxos.net/tmax ${SOURCE_DISTRO} ${COMPONENT}
+EOF
+
+apt-get update
+
+
+SOURCE_PACKAGES=`echo ${SOURCE_PACKAGES} | sed &apos;s/,/\n/g&apos;`
+
+mkdir -p ${SOURCE_DISTRO}-${COMPONENT}
+cd ${SOURCE_DISTRO}-${COMPONENT}
+
+echo ${SOURCE_PACKAGES} &gt; package-list.txt
+
+while read line || [ -n &quot;$line&quot; ]; do
+  apt-get download -t=${SOURCE_DISTRO} $line
+done &lt; package-list.txt
+
+rename &apos;s/%3a/:/g&apos; *
+
+cd ${WORKSPACE}
+
+rm /etc/apt/sources.list.d/temp.list
+apt-get update</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>

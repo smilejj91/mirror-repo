@@ -1,0 +1,274 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>ISO 파일 제작 및 OSQA 파일 서버 및 사업 관리 서버에 업로드 자동화</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <maxConcurrentPerNode>1</maxConcurrentPerNode>
+      <maxConcurrentTotal>2</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>true</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>true</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>2</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>TAG_TO_BUILD</name>
+          <randomName>choice-parameter-2857453043594840</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;slave1&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def tags = &quot;git ls-remote -t -h http://jaejeon_lim:tmax1234@gitlab.tmaxos.net/infra/tmaxgooroom-live-build-system.git&quot;.execute() | [&apos;awk&apos;, &apos;{ print $2 }&apos;].execute()
+println tags.text
+&apos;&apos;&apos;.trim()
+
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&apos;refs/heads/.*&apos;, &apos;&apos;).replaceAll(&apos;refs/tags/&apos;, &apos;&apos;).replaceAll(&quot;\\^\\{\\}&quot;, &apos;&apos;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>WIP_make_iso_file_and_upload_to_qa-file-server_and_b2b-data-server</projectName>
+          <projectFullName>WIP_make_iso_file_and_upload_to_qa-file-server_and_b2b-data-server</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition plugin="nodelabelparameter@1.10.3">
+          <name>NODE</name>
+          <allowedSlaves>
+            <string>slave1</string>
+            <string>slave2</string>
+          </allowedSlaves>
+          <defaultSlaves>
+            <string>slave2</string>
+          </defaultSlaves>
+          <triggerIfResult>multiSelectionDisallowed</triggerIfResult>
+          <allowMultiNodeSelection>false</allowMultiNodeSelection>
+          <triggerConcurrentBuilds>false</triggerConcurrentBuilds>
+          <ignoreOfflineNodes>false</ignoreOfflineNodes>
+          <nodeEligibility class="org.jvnet.jenkins.plugins.nodelabelparameter.node.IgnoreOfflineNodeEligibility"/>
+        </org.jvnet.jenkins.plugins.nodelabelparameter.NodeParameterDefinition>
+        <hudson.model.FileParameterDefinition>
+          <name>privkey_evm.pem</name>
+          <description>ima key for gep (gooroom exe protector)
+
+key를 등록하지 않으면 IMA 적용은 되지 않음</description>
+        </hudson.model.FileParameterDefinition>
+        <org.biouno.unochoice.DynamicReferenceParameter plugin="uno-choice@2.6.0">
+          <name>CURRENT_PACKAGES</name>
+          <randomName>choice-parameter-759590764740476</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def repository = new StringBuilder().append(TAG_TO_BUILD).append(&apos;_main&apos;).replaceAll(&quot;-21&quot;, &quot;&quot;)
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot;
+println &quot;aptly repo search -format=&apos;{{.Package}}&apos; ${repository}&quot;.execute().text
+&quot;&quot;&quot;.trim()
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;&apos;&quot;, &quot;&quot;)
+}
+return result.tokenize()
+</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>WIP_make_iso_file_and_upload_to_qa-file-server_and_b2b-data-server</projectName>
+          <projectFullName>WIP_make_iso_file_and_upload_to_qa-file-server_and_b2b-data-server</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>TAG_TO_BUILD</referencedParameters>
+          <choiceType>ET_ORDERED_LIST</choiceType>
+          <omitValueField>false</omitValueField>
+        </org.biouno.unochoice.DynamicReferenceParameter>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@4.10.3">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <refspec>+refs/tags/*:refs/remotes/origin/tags/*</refspec>
+        <url>http://gitlab.tmaxos.net/infra/tmaxgooroom-live-build-system</url>
+        <credentialsId>gitlab-user-id</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>origin/tags/${TAG_TO_BUILD}</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="empty-list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>true</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+set -e
+#set -x
+
+echo -e &quot;build start!&quot;
+
+BUSINESSNAME=`echo ${TAG_TO_BUILD} | cut -d &apos;-&apos; -f 3`
+
+if [ -f privkey_evm.pem ]; then
+  echo -e &quot;copy gep key for apply ima&quot;
+  
+  mkdir -p config/includes.binary/
+  mkdir -p config/includes.chroot/
+  
+  cp privkey_evm.pem config/includes.binary/privkey_evm.pem 
+  cp privkey_evm.pem config/includes.chroot/privkey_evm.pem
+fi
+
+lb config
+
+lb build
+
+mkdir -p output
+
+mv *.iso output/${TAG_TO_BUILD}.iso
+
+#lb clean
+
+echo -e &quot;build fininsh!&quot;
+
+echo -e &quot;===== send to qa file server ==========================================&quot;
+
+if [ ! -z ${BUSINESSNAME} ]; then
+  mkdir -p /osqa_smb/binary/TmaxOS/RND/tmaxgooroom/tmaxgooroom-21/${BUSINESSNAME}
+  cp output/${TAG_TO_BUILD}.iso /osqa_smb/binary/TmaxOS/RND/tmaxgooroom/tmaxgooroom-21/${BUSINESSNAME}/${TAG_TO_BUILD}.iso
+else
+  mkdir -p /osqa_smb/binary/TmaxOS/RND/tmaxgooroom/tmaxgooroom-21/etc
+  cp output/${TAG_TO_BUILD}.iso /osqa_smb/binary/TmaxOS/RND/tmaxgooroom/tmaxgooroom-21/etc/${TAG_TO_BUILD}.iso
+fi
+
+echo -e &quot;===== send to b2b-data server ==========================================&quot;
+
+curl -c test.txt -d &apos;{&quot;id&quot;:&quot;os_infra&quot;, &quot;pw&quot;:&quot;os_infra&quot;}&apos; -H &quot;Content-Type: application/json&quot; -X POST &apos;http://b2b-data.tmaxos.net/login&apos;;
+curl -b test.txt -F &quot;iso=@output/${TAG_TO_BUILD}.iso&quot; &apos;http://b2b-data.tmaxos.net/admin/upload_iso_from_jenkins&apos;;
+curl -b test.txt -X GET &quot;http://b2b-data.tmaxos.net/logout&quot;
+
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.emailext.ExtendedEmailPublisher plugin="email-ext@2.87">
+      <recipientList>os_infra@tmax.co.kr, bcc:os_rnd@tmax.co.kr, bcc:oqa@tmax.co.kr, bcc:os_product@tmax.co.kr</recipientList>
+      <configuredTriggers>
+        <hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+      </configuredTriggers>
+      <contentType>default</contentType>
+      <defaultSubject>${TAG_TO_BUILD} ISO 업데이트 공지</defaultSubject>
+      <defaultContent>안녕하세요. OS1-2팀입니다.
+
+${TAG_TO_BUILD} ISO 이미지 업데이트 공지입니다.
+
+-------------------------------------------------------
+
+- 서버 : 192.168.105.119
+
+- ID : rnd
+
+- PW : osqa1234 (ssh는 1234)
+
+- 이미지 경로:
+
+QA 파일 서버 : /samba/OSQA/binary/TmaxOS/RND/tmaxgooroom/tmaxgooroom-21/{사업장}/${TAG_TO_BUILD}.iso
+사업 관리 서버 : http://b2b-data.tmaxos.net/business (DNS 변경 필요)
+
+- 사업관련 릴리즈노트 경로 (임시):
+
+/samba/OSQA/binary/TmaxOS/RND/tmaxgooroom/release-note/{패키지명}_{담당팀}_release-note.txt
+
+-------------------------------------------------------------
+
+폴더에 위치한 README 파일을 참고해주시고,
+
+DNS 및 기타 문의사항은 메일이나, 와플을 통해 연락주시기 바랍니다.
+
+감사합니다.</defaultContent>
+      <attachmentsPattern></attachmentsPattern>
+      <presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+      <postsendScript>$DEFAULT_POSTSEND_SCRIPT</postsendScript>
+      <attachBuildLog>false</attachBuildLog>
+      <compressBuildLog>false</compressBuildLog>
+      <replyTo>$DEFAULT_REPLYTO</replyTo>
+      <from></from>
+      <saveOutput>false</saveOutput>
+      <disabled>false</disabled>
+    </hudson.plugins.emailext.ExtendedEmailPublisher>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>

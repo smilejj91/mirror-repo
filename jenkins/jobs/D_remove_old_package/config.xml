@@ -1,0 +1,103 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>repository에서 오래된 패키지 삭제</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>DISTRIBUTION</name>
+          <description>패키지 삭제를 하고자하는 repository의 distribution 이름 (ex. bullseye)</description>
+          <defaultValue>tmaxgooroom-gs</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>COMPONENT</name>
+          <description>패키지 삭제를 하고자하는 repository의 component 이름 (ex. main)</description>
+          <defaultValue>main</defaultValue>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+#set -x
+set -e
+
+if [ -z ${DISTRIBUTION} ] || [ -z ${COMPONENT} ]; then
+  echo -e &quot;put argument!&quot;
+  exit 1;
+fi
+
+repo=&quot;${DISTRIBUTION}_${COMPONENT}&quot;
+dup=false
+
+for p in `aptly repo search $repo | sort -V`
+do
+        pkg=`echo $p | sed &apos;s,_.*,,&apos;`
+        if test &quot;$pkg&quot; = &quot;$pkg_old&quot;
+        then
+                dup=true
+        elif $dup
+        then
+                dup=false
+                # $p_old is latest version of some package with more than one version
+                # Output a search spec for all versions older than this
+                # Version is 2nd field in output of aptly repo search, separated by _
+                v_old=`echo $p_old | cut -d_ -f2`
+                aptly repo remove $repo &quot;$pkg_old (&lt;&lt; $v_old)&quot;
+        fi
+        p_old=&quot;$p&quot;
+        pkg_old=&quot;$pkg&quot;
+done
+
+if test &quot;$pkg&quot; = &quot;$pkg_old&quot;
+then
+  v_old=`echo $p_old | cut -d_ -f2`
+  aptly repo remove $repo &quot;$pkg_old (&lt;&lt; $v_old)&quot;
+fi</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DISTRIBUTION_NAME=${DISTRIBUTION}</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>4_create_snapshot_and_publish_switch</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>

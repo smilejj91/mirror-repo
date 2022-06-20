@@ -1,0 +1,269 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>5</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_DISTRO</name>
+          <description>패키지를 export할 DISTRIBUTION</description>
+          <randomName>choice-parameter-2831333621305499</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def repo = &quot;aptly repo list --raw&quot;.execute() | &quot;grep -e unstable -e proposed-updates&quot;.execute()
+println repo.text
+&apos;&apos;&apos;.trim()
+
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>9_move_to_packages</projectName>
+          <projectFullName>9_move_to_packages</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <org.biouno.unochoice.CascadeChoiceParameter plugin="uno-choice@2.6.0">
+          <name>SOURCE_PACKAGES</name>
+          <randomName>choice-parameter-2831361758025531</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def sourceRepo = new StringBuilder().append(SOURCE_DISTRO).append(&apos;_main&apos;)
+def destRepo = new StringBuilder().append(sourceRepo ).replaceAll(&quot;unstable&quot;, &quot;stable&quot;).replaceAll(&quot;proposed-updates&quot;, &quot;updates&quot;)
+
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot; 
+&quot;rm source.txt dest.txt duplicate.txt&quot;.execute()
+
+def sourcePackages = &quot;aptly repo search  ${sourceRepo}&quot;.execute()
+def destPackages = &quot;aptly repo search  ${destRepo}&quot;.execute()
+
+File sourcePackagesFile = new File(&quot;source.txt&quot;)
+File destPackagesFile = new File(&quot;dest.txt&quot;)
+
+sourcePackagesFile.append(sourcePackages.text)
+destPackagesFile.append(destPackages.text)
+
+File duplicatePackagesFile = new File(&quot;duplicate.txt&quot;)
+
+def duplictatePackages = &quot;grep -f dest.txt source.txt&quot;.execute()
+duplicatePackagesFile.append(duplictatePackages.text)
+
+duplicatePackagesFile.eachLine { line -&gt;
+  def replace = sourcePackagesFile.text.replace(line, &quot;&quot;)
+  sourcePackagesFile.text = replace
+}
+
+println sourcePackagesFile.text
+&quot;&quot;&quot;.trim()
+
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;&apos;&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>return [&apos;error&apos;]</script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>9_move_to_packages</projectName>
+          <projectFullName>9_move_to_packages</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>SOURCE_DISTRO</referencedParameters>
+          <choiceType>PT_CHECKBOX</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.CascadeChoiceParameter>
+        <org.biouno.unochoice.CascadeChoiceParameter plugin="uno-choice@2.6.0">
+          <name>DEST_DISTRO</name>
+          <randomName>choice-parameter-2847519173437993</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def repository = new StringBuilder().append(SOURCE_DISTRO)
+def stableRepository = new StringBuilder().append(repository).replaceAll(&quot;unstable&quot;, &quot;stable&quot;).replaceAll(&quot;proposed-updates&quot;, &quot;updates&quot;)
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot;
+def repo = &quot;aptly repo list --raw&quot;.execute() | &quot;grep -x ${stableRepository}_main&quot;.execute()
+println repo.text
+&quot;&quot;&quot;.trim()
+
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>9_move_to_packages</projectName>
+          <projectFullName>9_move_to_packages</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>SOURCE_DISTRO</referencedParameters>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>false</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.CascadeChoiceParameter>
+        <org.biouno.unochoice.DynamicReferenceParameter plugin="uno-choice@2.6.0">
+          <name>DEST_PACKAGES</name>
+          <randomName>choice-parameter-2836812615704944</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+
+def repository = new StringBuilder().append(DEST_DISTRO).append(&apos;_main&apos;)
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &quot;&quot;&quot;
+println &quot;aptly repo search ${repository}&quot;.execute().text
+&quot;&quot;&quot;.trim()
+ 
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;&apos;&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>9_move_to_packages</projectName>
+          <projectFullName>9_move_to_packages</projectFullName>
+          <parameters class="linked-hash-map"/>
+          <referencedParameters>DEST_DISTRO</referencedParameters>
+          <choiceType>ET_UNORDERED_LIST</choiceType>
+          <omitValueField>false</omitValueField>
+        </org.biouno.unochoice.DynamicReferenceParameter>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+set -e
+set -x
+
+echo ${SOURCE_PACKAGES}
+SOURCE_PACKAGES=`echo ${SOURCE_PACKAGES} | sed &apos;s/,/ /g&apos;`
+echo ${SOURCE_PACKAGES}
+
+COMPONENT=&quot;main&quot;
+
+function copy_package() {
+  aptly repo copy -config=${CONFIG} -architectures=&quot;all&quot; -with-deps ${SOURCE_DISTRO}_${COMPONENT} ${DEST_DISTRO}_${COMPONENT} ${SOURCE_PACKAGES}
+}
+
+copy_package</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DISTRIBUTION=${DEST_DISTRO}</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>D_remove_old_package</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.40">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>true</cleanWhenUnstable>
+      <cleanWhenFailure>true</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>true</cleanWhenAborted>
+      <notFailBuild>false</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>

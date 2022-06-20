@@ -1,0 +1,265 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.throttleconcurrents.ThrottleJobProperty plugin="throttle-concurrents@2.7">
+      <maxConcurrentPerNode>0</maxConcurrentPerNode>
+      <maxConcurrentTotal>0</maxConcurrentTotal>
+      <categories class="java.util.concurrent.CopyOnWriteArrayList"/>
+      <throttleEnabled>false</throttleEnabled>
+      <throttleOption>project</throttleOption>
+      <limitOneJobWithMatchingParams>false</limitOneJobWithMatchingParams>
+      <paramsToUseForLimit></paramsToUseForLimit>
+    </hudson.plugins.throttleconcurrents.ThrottleJobProperty>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>10</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <org.biouno.unochoice.ChoiceParameter plugin="uno-choice@2.6.0">
+          <name>DISTRIBUTION_NAME</name>
+          <description>[Postfix] 
+- &quot;-unstable&quot; : QA 검증안 된 패키지들이 모여있는 repo
+- &quot;-stable&quot; : QA 검증된 패키지들이 모여있는 repo (연구원들은 추가 불가능)
+- &quot;-proposed-updates&quot; : QA 검증안 된 update 패키지들 (주로 hotfix)이 모여있는 repo
+- &quot;-updates&quot; : QA 검증된 update 패키지들이 모여있는 repo(연구원들은 추가 불가능)
+- &quot;-experimental&quot; : 연구소 test repo
+
+[업데이트]
+- tmaxgooroom-3.0-proposed-updates : tmaxgooroom-3.0 update repo
+
+[사업 모델] : 해당 repository에 있는 패키지들은 ISO 제작 전에 사업장 repository로 복사됨 (시범 운영 중...) 
+- tmaxgooroom-rds-unstable : RDS 사업 공통
+- tmaxgooroom-sd-unstable : Tmax구름 SD 사업 공통
+- tmaxgooroom-guest-unstable : 게스트 OS 사업 공통
+
+[사업장]
+- tmaxgooroom-comwel-unstable : 근로복지공단 단말 OS
+- tmaxgooroom-gs-unstable : GS 인증 데스크탑 OS
+- tmaxgooroom-iiac-unstable : 인천국제공항공사 단말 OS
+- tmaxgooroom-kepco-unstable : 한전 단말 OS
+- tmaxgooroom-mois-unstable : 행정안전부 단말 OS
+- tmaxgooroom-guestmois-unstable : 행정안전부 게스트 OS
+- tmaxgooroom-moe-unstable : 교육부 단말 OS
+
+[legacy]
+- tmaxgooroom-5G-unstable : 5G 단말 OS</description>
+          <randomName>choice-parameter-2838316813927198</randomName>
+          <visibleItemCount>1</visibleItemCount>
+          <script class="org.biouno.unochoice.model.GroovyScript">
+            <secureScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script>import hudson.util.RemotingDiagnostics
+import jenkins.model.Jenkins
+ 
+String agent_name = &apos;repo&apos;
+//groovy script you want executed on an agent
+groovy_script = &apos;&apos;&apos;
+def repo = &quot;aptly repo list --raw&quot;.execute() | &quot;grep -v tmaxgooroom-3.0-unstable&quot;.execute() | &quot;grep -v tmaxgooroom-3.0-updates&quot;.execute() | &quot;grep -e unstable -e experimental -e updates&quot;.execute()
+println repo.text
+&apos;&apos;&apos;.trim()
+
+String result
+Jenkins.instance.slaves.find { agent -&gt;
+    agent.name == agent_name
+}.with { agent -&gt;
+    result = RemotingDiagnostics.executeGroovy(groovy_script, agent.channel).replaceAll(&quot;_main&quot;, &quot;&quot;)
+}
+return result.tokenize()</script>
+              <sandbox>false</sandbox>
+            </secureScript>
+            <secureFallbackScript plugin="script-security@1131.v8b_b_5eda_c328e">
+              <script></script>
+              <sandbox>false</sandbox>
+            </secureFallbackScript>
+          </script>
+          <projectName>2_add_package_to_b2b_repo</projectName>
+          <projectFullName>2_add_package_to_b2b_repo</projectFullName>
+          <choiceType>PT_SINGLE_SELECT</choiceType>
+          <filterable>true</filterable>
+          <filterLength>1</filterLength>
+        </org.biouno.unochoice.ChoiceParameter>
+        <hudson.model.FileParameterDefinition>
+          <name>packages.zip</name>
+          <description>★★★★★★필독!! (22/04/11 update) ★★★★★★
+
+1. 압축파일 형식: *.zip (*.deb, *.dsc, *.tar.* 3개 파일 포함 필수)
+
+  - 기존 release-note.txt 작성하는 대신 changelog 수집 예정
+
+2. 상세 내용
+
+  - 리패키징 패키지일 경우 마지막 버전명은 사업장에 맞는 revision 사용할 것 
+  - ex1. tmaxgooroom-mois-unstable -&gt;{package_name}_{origin version}+mois2.deb
+  - ex2. tmaxgooroom-mois-unstable -&gt;{package_name}_{origin version}+grm3u1+mois1.deb
+  - ex3. tmaxgooroom-mois-unstable -&gt;{package_name}_{origin version}+grm3u1+rds1+mois1.deb</description>
+        </hudson.model.FileParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+set -e
+#set -x
+
+DISTRIBUTION=${DISTRIBUTION_NAME}
+COMPONENT=&quot;main&quot;
+TARGETDIR=&quot;${WORKSPACE}&quot;
+CONFIG=&quot;/etc/aptly.conf&quot;
+BUSINESSNAME=`echo ${DISTRIBUTION} | cut -d &apos;-&apos; -f 2`
+
+function add_repo() {
+  aptly repo add -config=${CONFIG} ${DISTRIBUTION}_${COMPONENT} ${TARGETDIR}
+}
+
+function remove_old_package() {
+  dup=false
+
+  for p in `aptly repo search ${DISTRIBUTION}_${COMPONENT} | sort -V`
+  do
+    pkg=`echo $p | sed &apos;s,_.*,,&apos;`
+    if test &quot;$pkg&quot; = &quot;$pkg_old&quot;
+    then
+      dup=true
+    elif $dup
+    then
+      dup=false
+      v_old=`echo $p_old | cut -d_ -f2`
+      aptly repo remove ${DISTRIBUTION}_${COMPONENT} &quot;$pkg_old (&lt;&lt; $v_old)&quot;
+    fi
+    p_old=&quot;$p&quot;
+    pkg_old=&quot;$pkg&quot;
+  done
+  
+  if test &quot;$pkg&quot; = &quot;$pkg_old&quot;
+  then
+    v_old=`echo $p_old | cut -d_ -f2`
+    aptly repo remove ${DISTRIBUTION}_${COMPONENT} &quot;$pkg_old (&lt;&lt; $v_old)&quot;
+  fi
+}
+
+function package_version_check() {
+  REVISION=`echo ${PACKAGE} | cut -d_ -f2 | rev | cut -d &apos;+&apos; -f 1 | rev | sed &apos;s/[0-9]*\$//g&apos; `
+  PACKAGE_NAME=`echo ${PACKAGE} | cut -d_ -f1`
+  
+  if [[ ${PACKAGE_NAME} == *&quot;gooroom-grub&quot;* ]]; then
+    echo -e &quot;this is gooroom-grub package, free pass&quot;
+  else
+    if [[ ${PACKAGE} == *&quot;+&quot;* ]] &amp;&amp; [ ${REVISION} != ${BUSINESSNAME} ]; then
+      echo -e &quot;wrong package rivision!&quot;
+      exit 1
+    fi
+  fi  
+}
+
+mkdir -p ${TARGETDIR}
+
+if [ ! -e &quot;packages.zip&quot; ]; then
+  echo -e &quot;packages.zip not found&quot;
+  exit 1
+fi
+
+unzip packages.zip -d ${TARGETDIR}/
+
+
+TAR_FILE=`find ${TARGETDIR} -name &quot;*.tar.*&quot; | awk &apos;NR==1{print $1}&apos;`
+DSC_FILE=`find ${TARGETDIR} -name &quot;*.dsc&quot;`
+DEB_FILE=`find ${TARGETDIR} -name &quot;*.deb&quot; | awk &apos;NR==1{print $1}&apos;`
+SOURCE_NAME=`basename ${DSC_FILE} | sed &apos;s/\.dsc//&apos; | cut -d_ -f1`
+VERSION_NAME=`basename ${DSC_FILE} | sed &apos;s/\.dsc//&apos; | cut -d_ -f2`
+
+function check_package() {
+  if [ -z ${DEB_FILE} ]; then
+    echo -e &quot;*.deb file not found&quot;
+    exit 1
+  fi
+  
+  if [ -z ${TAR_FILE} ]; then
+    echo -e &quot;*.tar.* file not found&quot;
+    exit 1
+  fi
+  
+  if [ -z ${DSC_FILE} ]; then
+    echo -e &quot;*.dsc file not found&quot;
+    exit 1
+  fi
+
+  for p in `find ${TARGETDIR} -name &quot;*.deb&quot;`
+  do
+ 	PACKAGE=`basename $p | sed &apos;s/\.deb//&apos;`
+    package_version_check  
+  done
+}
+
+if [[ ${DISTRIBUTION} == *&quot;experimental&quot;* ]]; then
+  add_repo
+  remove_old_package
+else
+  check_package
+  add_repo
+  remove_old_package
+fi
+
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.43">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>DISTRIBUTION_NAME=${DISTRIBUTION_NAME}</properties>
+              <textParamValueOnNewLine>false</textParamValueOnNewLine>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>4_create_snapshot_and_publish_switch</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+          <triggerFromChildProjects>false</triggerFromChildProjects>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+    <hudson.plugins.ws__cleanup.WsCleanup plugin="ws-cleanup@0.40">
+      <patterns class="empty-list"/>
+      <deleteDirs>false</deleteDirs>
+      <skipWhenFailed>false</skipWhenFailed>
+      <cleanWhenSuccess>true</cleanWhenSuccess>
+      <cleanWhenUnstable>true</cleanWhenUnstable>
+      <cleanWhenFailure>true</cleanWhenFailure>
+      <cleanWhenNotBuilt>true</cleanWhenNotBuilt>
+      <cleanWhenAborted>true</cleanWhenAborted>
+      <notFailBuild>false</notFailBuild>
+      <cleanupMatrixParent>false</cleanupMatrixParent>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.WsCleanup>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.40">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+      <disableDeferredWipeout>false</disableDeferredWipeout>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <hudson.plugins.ansicolor.AnsiColorBuildWrapper plugin="ansicolor@1.0.1">
+      <colorMapName>xterm</colorMapName>
+    </hudson.plugins.ansicolor.AnsiColorBuildWrapper>
+  </buildWrappers>
+</project>
